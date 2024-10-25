@@ -1,5 +1,10 @@
 name: Continuous integration
-on: [push]
+
+on: 
+  push:
+    branches:
+      - main  # Ajoute une branche cible, par exemple, main.
+
 jobs:
   ci:
     name: Continuous Integration
@@ -9,34 +14,41 @@ jobs:
       matrix:
         operating-system: [ubuntu-latest]
         php-versions: ['8.2', '8.3']
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3  # Mise à jour vers la version 3
+
       - name: Setup PHP, with composer and extensions
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
           extensions: mbstring, xml, ctype, iconv, intl
           tools: castor
+
       - name: Get composer cache directory
         id: composer-cache
-        run: echo "::set-output name=dir::$(composer config cache-files-dir)"
+        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_ENV  # Utilisation de fichiers d'environnement
+
       - name: Cache composer dependencies
-        uses: actions/cache@v1
+        uses: actions/cache@v3  # Mise à jour vers la version 3
         with:
-          path: ${{ steps.composer-cache.outputs.dir }}
+          path: ${{ env.dir }}
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
+
       - name: Build
         run: |
-          docker compose -f "docker-compose.yml" up -d --build
+          docker-compose -f "docker-compose.yml" up -d --build
           composer install
           php bin/console doctrine:database:drop -f --if-exists --env=test
           php bin/console doctrine:database:create --env=test
           php bin/console doctrine:migrations:migrate -n --env=test
           php bin/console doctrine:fixtures:load -n --purge-with-truncate --env=test
           php bin/console sass:build
+
       - name: Tests
         run: php bin/phpunit
+
       - name: Analysis
-        run: php vendor/bin/phpstan
+        run: vendor/bin/phpstan analyse src --level=max  # Ajout de l'analyse statique avec PHPStan
