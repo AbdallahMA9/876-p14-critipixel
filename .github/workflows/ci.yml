@@ -11,43 +11,32 @@ jobs:
         php-versions: ['8.2', '8.3']
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
-
+        uses: actions/checkout@v2
       - name: Setup PHP, with composer and extensions
         uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php-versions }}
           extensions: mbstring, xml, ctype, iconv, intl
           tools: castor
-
-      - name: Install Docker and Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker.io docker-compose
-
+      - name: Get composer cache directory
+        id: composer-cache
+        run: echo "::set-output name=dir::$(composer config cache-files-dir)"
       - name: Cache composer dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v1
         with:
-          path: ~/.composer/cache
+          path: ${{ steps.composer-cache.outputs.dir }}
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
-
-      - name: Install Composer dependencies
-        run: composer install
-
-      - name: Setup Database
+      - name: Build
         run: |
+          docker compose -f "docker-compose.yml" up -d --build
+          composer install
           php bin/console doctrine:database:drop -f --if-exists --env=test
           php bin/console doctrine:database:create --env=test
           php bin/console doctrine:migrations:migrate -n --env=test
           php bin/console doctrine:fixtures:load -n --purge-with-truncate --env=test
-
-      - name: Build
-        run: |
-          docker-compose -f "docker-compose.yml" up -d --build
-
+          php bin/console sass:build
       - name: Tests
         run: php bin/phpunit
-
       - name: Analysis
-        run: vendor/bin/phpstan analyse src --level=max
+        run: php vendor/bin/phpstan
