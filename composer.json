@@ -36,6 +36,7 @@
     "symfony/web-link": "6.4.*",
     "symfony/yaml": "6.4.*",
     "symfonycasts/sass-bundle": "^0.6.0",
+    "symplify/symfony-static-dumper": "^11.1",
     "twbs/bootstrap": "^5.3",
     "twig/extra-bundle": "^2.12|^3.0",
     "twig/string-extra": "^3.9",
